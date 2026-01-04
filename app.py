@@ -60,3 +60,4 @@ if prompt := st.chat_input("Wie kann ich Ihnen helfen?"):
             st.session_state.messages.append({"role": "assistant", "content": response.text})
         except:
             st.error(f"Kritischer Fehler: {e}")
+
