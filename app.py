@@ -48,3 +48,4 @@ if prompt := st.chat_input("Wie kann ich Ihnen helfen?"):
     except Exception as e:
         st.error(f"Fehler: {e}")
 
+
