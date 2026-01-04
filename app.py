@@ -38,7 +38,7 @@ if prompt := st.chat_input("Wie kann ich Ihnen helfen?"):
     # Generate Response
     try:
         model = genai.GenerativeModel(
-           model_name="gemini-1.5-flash-latest",
+           model_name="gemini-pro",
             system_instruction=SYSTEM_PROMPT
         )
         response = model.generate_content(prompt)
@@ -47,6 +47,7 @@ if prompt := st.chat_input("Wie kann ich Ihnen helfen?"):
             st.markdown(response.text)
     except Exception as e:
         st.error(f"Fehler: {e}")
+
 
 
 
