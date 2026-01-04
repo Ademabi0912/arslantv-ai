@@ -1,39 +1,48 @@
-# ArslanTV AI – Chatbot, der praktisch jede Frage beantworten kann
-# Nutzt OpenAI API (ähnlich wie Gemini, legal und sicher)
+import streamlit as st
+import google.generativeai as genai
 
-import openai
-import os
+# Konfiguration der Webseite
+st.set_page_config(page_title="ArslanTV AI", page_icon="🤖")
+st.title("🤖 ArslanTV AI")
+st.markdown("Ihr professioneller KI-Assistent für alle Anfragen.")
 
-# API-Key aus Environment Variable holen
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# API-Key Sicherung (Wichtig für das Deployment)
+if "GOOGLE_API_KEY" in st.secrets:
+    genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+else:
+    st.error("Bitte hinterlegen Sie den GOOGLE_API_KEY in den Streamlit Secrets.")
 
-def arslantv_ai_chat(prompt, max_tokens=300):
-    """
-    Funktion: ArslanTV AI antwortet auf jede Frage
-    """
-    try:
-        response = openai.Completion.create(
-            engine="text-davinci-003",  # leistungsstarkes Modell
-            prompt=f"Du bist ArslanTV AI, eine intelligente KI. Beantworte jede Frage präzise und freundlich:\n{prompt}",
-            max_tokens=max_tokens,
-            temperature=0.7,
-            top_p=1,
-            frequency_penalty=0,
-            presence_penalty=0
-        )
-        return response.choices[0].text.strip()
-    except Exception as e:
-        return f"Fehler: {e}"
+# Definition der professionellen Persönlichkeit
+SYSTEM_PROMPT = """
+Du bist ArslanTV AI, ein hochprofessioneller digitaler Assistent. 
+Deine Antworten sind stets in korrektem, gehobenem Deutsch verfasst. 
+Du achtest strikt auf Grammatik und Rechtschreibung. 
+Dein Tonfall ist höflich, sachlich und lösungsorientiert. 
+Vermeide Umgangssprache und bleibe immer seriös.
+"""
 
-def main():
-    print("ArslanTV AI gestartet! (Tippe 'exit' zum Beenden)")
-    while True:
-        user_input = input("Du: ")
-        if user_input.lower() == "exit":
-            print("ArslanTV AI: Bis bald!")
-            break
-        answer = arslantv_ai_chat(user_input)
-        print(f"ArslanTV AI: {answer}")
+if "chat_session" not in st.session_state:
+    model = genai.GenerativeModel(
+        model_name="gemini-1.5-flash",
+        system_instruction=SYSTEM_PROMPT
+    )
+    st.session_state.chat_session = model.start_chat(history=[])
 
-if __name__ == "__main__":
-    main()
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+# Anzeige des Chat-Verlaufs
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+# Eingabe des Nutzers
+if prompt := st.chat_input("Wie kann ich Ihnen heute behilflich sein?"):
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    with st.chat_message("assistant"):
+        response = st.session_state.chat_session.send_message(prompt)
+        st.markdown(response.text)
+        st.session_state.messages.append({"role": "assistant", "content": response.text})
