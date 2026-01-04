@@ -12,7 +12,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-st.title("🤖 ArslanTV AI")
+st.title("ArslanTV AI")
 st.caption("Ihr Profi-KI-Assistent für alle Antworten.")
 
 # 2. API-Key sicher laden
@@ -48,3 +48,4 @@ if prompt := st.chat_input("Wie kann ich Ihnen heute helfen?"):
         st.chat_message("assistant").write(response.text)
     except Exception as e:
         st.error(f"KI-Fehler: {e}. Bitte prüfen Sie, ob der API-Key korrekt ist.")
+
