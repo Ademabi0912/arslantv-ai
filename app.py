@@ -1,10 +1,9 @@
 import streamlit as st
 import google.generativeai as genai
 
-# Design & Branding
+# 1. Design & Branding
 st.set_page_config(page_title="ArslanTV AI", page_icon="🤖")
 
-# Dark-Mode Styling
 st.markdown("""
     <style>
     .stApp { background-color: #0E1117; color: white; }
@@ -15,14 +14,14 @@ st.markdown("""
 st.title("🤖 ArslanTV AI")
 st.markdown("---")
 
-# API-Key Sicherung
+# 2. API-Key sicher laden
 if "GOOGLE_API_KEY" in st.secrets:
     genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 else:
     st.error("Bitte den GOOGLE_API_KEY in den Streamlit-Secrets hinterlegen.")
     st.stop()
 
-# Chat-Verlauf
+# 3. Chat-Historie
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
@@ -30,34 +29,26 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# KI Logik
+# 4. KI Logik (Der ultimative Fix)
 if prompt := st.chat_input("Wie kann ich Ihnen helfen?"):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
     try:
-        # WICHTIG: Wir rufen das Modell OHNE 'models/' Präfix auf, 
-        # da die Bibliothek das intern selbst regelt.
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        # Wir probieren erst den modernsten Namen
+        try:
+            model = genai.GenerativeModel('gemini-1.5-flash')
+            response = model.generate_content(prompt)
+        except:
+            # Falls das scheitert, nehmen wir den absoluten Pfad
+            model = genai.GenerativeModel('models/gemini-pro')
+            response = model.generate_content(prompt)
         
-        # Generierung der Antwort
-        response = model.generate_content(prompt)
-        
-        if response.text:
-            with st.chat_message("assistant"):
-                st.markdown(response.text)
-            st.session_state.messages.append({"role": "assistant", "content": response.text})
-        else:
-            st.error("Die KI hat keine Antwort geliefert. Prüfen Sie das Kontingent im AI Studio.")
+        answer = response.text
+        with st.chat_message("assistant"):
+            st.markdown(answer)
+        st.session_state.messages.append({"role": "assistant", "content": answer})
             
     except Exception as e:
-        # Falls Gemini 1.5 Flash noch hakt, nutzen wir das bewährte Pro-Modell
-        try:
-            model = genai.GenerativeModel('gemini-pro')
-            response = model.generate_content(prompt)
-            st.chat_message("assistant").markdown(response.text)
-            st.session_state.messages.append({"role": "assistant", "content": response.text})
-        except:
-            st.error(f"Kritischer Fehler: {e}")
-
+        st.error(f"Hinweis: Die KI startet gerade neu. Bitte versuchen Sie es in 10 Sekunden nochmal. (Technischer Code: {e})")
