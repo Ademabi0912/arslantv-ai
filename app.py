@@ -2,7 +2,7 @@ import streamlit as st
 import google.generativeai as genai
 
 # 1. Design & Branding
-st.set_page_config(page_title="ArslanTV AI", page_icon="🤖")
+st.set_page_config(page_title="ArslanTV AI")
 
 st.markdown("""
     <style>
@@ -11,8 +11,8 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-st.title("🤖 ArslanTV AI")
-st.markdown("---")
+st.title("ArslanTV AI")
+st.markdown("Ihr Profi-KI-Assistent.")
 
 # 2. API-Key sicher laden
 if "GOOGLE_API_KEY" in st.secrets:
@@ -52,3 +52,4 @@ if prompt := st.chat_input("Wie kann ich Ihnen helfen?"):
             
     except Exception as e:
         st.error(f"Hinweis: Die KI startet gerade neu. Bitte versuchen Sie es in 10 Sekunden nochmal. (Technischer Code: {e})")
+
