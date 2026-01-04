@@ -1,51 +1,55 @@
 import streamlit as st
 import google.generativeai as genai
 
-# 1. Design & Seiteneinstellungen
-st.set_page_config(page_title="ArslanTV AI", page_icon="🤖", layout="centered")
+# Design-Einstellungen
+st.set_page_config(page_title="ArslanTV AI", page_icon="🤖")
 
-# Schickes CSS für dunkles Design und runde Ecken
 st.markdown("""
     <style>
     .stApp { background-color: #0E1117; color: white; }
-    .stChatMessage { border-radius: 20px; border: 1px solid #30363d; }
+    .stChatMessage { border-radius: 15px; }
     </style>
     """, unsafe_allow_html=True)
 
-st.title("ArslanTV AI")
-st.caption("Ihr Profi-KI-Assistent für alle Antworten.")
+st.title("🤖 ArslanTV AI")
+st.write("Ihr Profi-KI-Assistent.")
 
-# 2. API-Key sicher laden
+# API-Key laden
 if "GOOGLE_API_KEY" in st.secrets:
     genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 else:
-    st.error("Bitte API-Key in den Streamlit Secrets hinterlegen!")
+    st.error("API-Key fehlt!")
     st.stop()
 
-# 3. Das richtige Modell wählen (Stabilere Version)
-try:
-    # Wir nutzen 'gemini-1.5-flash' - das ist schnell und aktuell
-    model = genai.GenerativeModel('gemini-1.5-flash')
-except Exception as e:
-    st.error(f"Modell-Fehler: {e}")
-
-# 4. Chat-Verlauf speichern
+# Chat-Historie
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-for msg in st.session_state.messages:
-    st.chat_message(msg["role"]).write(msg["content"])
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
 
-# 5. Eingabe und Antwort
-if prompt := st.chat_input("Wie kann ich Ihnen heute helfen?"):
+# KI-Logik
+if prompt := st.chat_input("Schreiben Sie etwas..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
-    st.chat_message("user").write(prompt)
-    
-    try:
-        # Hier wird die Antwort generiert
-        response = model.generate_content(prompt)
-        st.session_state.messages.append({"role": "assistant", "content": response.text})
-        st.chat_message("assistant").write(response.text)
-    except Exception as e:
-        st.error(f"KI-Fehler: {e}. Bitte prüfen Sie, ob der API-Key korrekt ist.")
+    with st.chat_message("user"):
+        st.markdown(prompt)
 
+    try:
+        # Diese Schreibweise ist die stabilste gegen 404-Fehler
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        response = model.generate_content(prompt)
+        
+        full_response = response.text
+        with st.chat_message("assistant"):
+            st.markdown(full_response)
+        st.session_state.messages.append({"role": "assistant", "content": full_response})
+    except Exception as e:
+        st.error(f"Fehler: {e}. Versuche Modell-Wechsel...")
+        # Backup-Versuch mit Pro-Modell falls Flash im Key gesperrt ist
+        try:
+            model = genai.GenerativeModel('gemini-pro')
+            response = model.generate_content(prompt)
+            st.chat_message("assistant").markdown(response.text)
+        except:
+            st.error("Bitte prüfe deinen API-Key im Google AI Studio. Er scheint nicht für Gemini 1.5 freigeschaltet zu sein.")
