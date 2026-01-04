@@ -11,7 +11,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-st.title("🤖 ArslanTV AI")
+st.title("ArslanTV AI")
 st.write("Ihr Profi-KI-Assistent.")
 
 # API-Key laden
@@ -53,3 +53,4 @@ if prompt := st.chat_input("Schreiben Sie etwas..."):
             st.chat_message("assistant").markdown(response.text)
         except:
             st.error("Bitte prüfe deinen API-Key im Google AI Studio. Er scheint nicht für Gemini 1.5 freigeschaltet zu sein.")
+
