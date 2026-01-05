@@ -1,7 +1,8 @@
 import streamlit as st
-import google.generativeai as genai
+import requests
+import json
 
-# Design
+# 1. Design & Branding
 st.set_page_config(page_title="ArslanTV AI", page_icon="🤖")
 st.markdown("""
     <style>
@@ -12,15 +13,14 @@ st.markdown("""
 
 st.title("🤖 ArslanTV AI")
 
-# API-Key Sicherung
-if "GOOGLE_API_KEY" in st.secrets:
-    # WICHTIG: Wir konfigurieren hier die API ganz explizit
-    genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-else:
-    st.error("Bitte API-Key in den Secrets prüfen!")
+# 2. Key Check (Aus deinen Secrets)
+if "GOOGLE_API_KEY" not in st.secrets:
+    st.error("API-Key fehlt in den Secrets!")
     st.stop()
 
-# Chat-Verlauf
+api_key = st.secrets["GOOGLE_API_KEY"]
+
+# 3. Chat-Verlauf
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
@@ -28,30 +28,43 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# KI Logik
+# 4. Die "Manuelle" KI-Logik (Bypass für den 404-Fehler)
+def ask_google_direct(prompt):
+    # WICHTIG: Wir nutzen hier 'v1' statt 'v1beta' -> Das ist der Trick!
+    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={api_key}"
+    
+    headers = {'Content-Type': 'application/json'}
+    data = {
+        "contents": [{
+            "parts": [{"text": prompt}]
+        }]
+    }
+    
+    try:
+        response = requests.post(url, headers=headers, json=data)
+        
+        if response.status_code == 200:
+            return response.json()['candidates'][0]['content']['parts'][0]['text']
+        else:
+            # Falls Flash nicht geht, probieren wir das Pro-Modell
+            fallback_url = f"https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key={api_key}"
+            response = requests.post(fallback_url, headers=headers, json=data)
+            if response.status_code == 200:
+                return response.json()['candidates'][0]['content']['parts'][0]['text']
+            else:
+                return f"Fehler: {response.status_code} - {response.text}"
+    except Exception as e:
+        return f"Verbindungsfehler: {e}"
+
+# 5. Eingabe verarbeiten
 if prompt := st.chat_input("Wie kann ich Ihnen helfen?"):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    try:
-        # Wir nutzen hier eine stabilere Methode für den Modellaufruf
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        
-        # Wir erzwingen die Antwort
-        response = model.generate_content(prompt)
-        
-        if response:
-            with st.chat_message("assistant"):
-                st.markdown(response.text)
-            st.session_state.messages.append({"role": "assistant", "content": response.text})
-            
-    except Exception as e:
-        # Falls der 404-Fehler wieder auftaucht, versuchen wir es über den 'models/' Pfad
-        try:
-            model = genai.GenerativeModel('models/gemini-1.5-flash')
-            response = model.generate_content(prompt)
-            st.chat_message("assistant").markdown(response.text)
-            st.session_state.messages.append({"role": "assistant", "content": response.text})
-        except:
-            st.error("Google Server Antwort: Bitte die App in 2 Minuten einmal 'Rebooten'.")
+    # Antwort holen
+    answer = ask_google_direct(prompt)
+    
+    with st.chat_message("assistant"):
+        st.markdown(answer)
+    st.session_state.messages.append({"role": "assistant", "content": answer})
