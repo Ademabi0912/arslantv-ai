@@ -1,36 +1,52 @@
 import streamlit as st
 import google.generativeai as genai
 
-st.set_page_config(page_title="ArslanTV Diagnose", page_icon="🔍")
-st.title("🔍 ArslanTV System-Check")
+# 1. Design & Interface
+st.set_page_config(page_title="ArslanTV AI", page_icon="🤖")
+st.markdown("""
+    <style>
+    .stApp { background-color: #0E1117; color: white; }
+    .stChatMessage { border-radius: 15px; border: 1px solid #30363d; background-color: #1A1D23; }
+    </style>
+    """, unsafe_allow_html=True)
 
-# 1. Key laden
+st.title("🤖 ArslanTV AI")
+st.caption("Status: Verbunden mit Gemini 2.0 Flash")
+
+# 2. API-Key Konfiguration
 if "GOOGLE_API_KEY" in st.secrets:
-    api_key = st.secrets["GOOGLE_API_KEY"]
-    genai.configure(api_key=api_key)
+    genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 else:
-    st.error("Key fehlt in den Secrets!")
+    st.error("API-Key fehlt in den Streamlit-Secrets!")
     st.stop()
 
-st.write("Verbinde mit Google Servern...")
+# 3. Chat-Historie
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-# 2. Diagnose starten
-try:
-    # Wir fragen Google direkt: "Was darf ich nutzen?"
-    found_models = []
-    for m in genai.list_models():
-        # Wir filtern nur Modelle, die auch Text generieren können
-        if 'generateContent' in m.supported_generation_methods:
-            found_models.append(m.name)
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
 
-    if found_models:
-        st.success(f"Erfolg! {len(found_models)} Modelle gefunden:")
-        # Hier wird die GENAUE Liste angezeigt
-        st.code("\n".join(found_models))
-        st.warning("👉 Bitte mache einen Screenshot von dieser Liste und zeige ihn mir!")
-    else:
-        st.error("Verbindung steht, aber Google sagt: 'Keine Modelle für diesen Key verfügbar'.")
-        st.info("Das passiert oft, wenn im Google Cloud Projekt die 'Generative Language API' nicht aktiviert ist.")
+# 4. KI-Logik (Punktlandung auf das Modell aus deiner Liste)
+if prompt := st.chat_input("Schreiben Sie eine Nachricht..."):
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
 
-except Exception as e:
-    st.error(f"Verbindungsfehler: {e}")
+    try:
+        # Wir nutzen EXAKT den Pfad aus deinem erfolgreichen System-Check
+        model = genai.GenerativeModel('models/gemini-2.0-flash')
+        
+        with st.spinner("ArslanTV AI antwortet..."):
+            response = model.generate_content(prompt)
+            
+            if response.text:
+                with st.chat_message("assistant"):
+                    st.markdown(response.text)
+                st.session_state.messages.append({"role": "assistant", "content": response.text})
+            else:
+                st.warning("Keine Textantwort erhalten. Bitte versuche es erneut.")
+
+    except Exception as e:
+        st.error(f"Ein kleiner Fehler ist aufgetreten. Bitte Seite neu laden. Details: {e}")
