@@ -1,7 +1,7 @@
 import streamlit as st
 import google.generativeai as genai
 
-# Design & Branding
+# Design
 st.set_page_config(page_title="ArslanTV AI", page_icon="🤖")
 st.markdown("""
     <style>
@@ -14,7 +14,7 @@ st.title("🤖 ArslanTV AI")
 
 # API-Key Sicherung
 if "GOOGLE_API_KEY" in st.secrets:
-    # HIER IST DER FIX: Wir erzwingen die stabile API-Version
+    # WICHTIG: Wir konfigurieren hier die API ganz explizit
     genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 else:
     st.error("Bitte API-Key in den Secrets prüfen!")
@@ -35,21 +35,23 @@ if prompt := st.chat_input("Wie kann ich Ihnen helfen?"):
         st.markdown(prompt)
 
     try:
-        # Wir nutzen den VOLLSTÄNDIGEN Pfad, damit v1beta nicht dazwischenfunkt
-        model = genai.GenerativeModel(model_name="models/gemini-1.5-flash")
+        # Wir nutzen hier eine stabilere Methode für den Modellaufruf
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        # Wir erzwingen die Antwort
         response = model.generate_content(prompt)
         
-        if response.text:
+        if response:
             with st.chat_message("assistant"):
                 st.markdown(response.text)
             st.session_state.messages.append({"role": "assistant", "content": response.text})
             
     except Exception as e:
-        # Sicherheits-Backup: Falls der Pfad oben noch hakt
+        # Falls der 404-Fehler wieder auftaucht, versuchen wir es über den 'models/' Pfad
         try:
-            model = genai.GenerativeModel(model_name="gemini-1.5-flash")
+            model = genai.GenerativeModel('models/gemini-1.5-flash')
             response = model.generate_content(prompt)
             st.chat_message("assistant").markdown(response.text)
             st.session_state.messages.append({"role": "assistant", "content": response.text})
-        except Exception as final_e:
-            st.error(f"Technisches Problem: Bitte kurz warten. (Fehler: {final_e})")
+        except:
+            st.error("Google Server Antwort: Bitte die App in 2 Minuten einmal 'Rebooten'.")
