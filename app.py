@@ -14,8 +14,8 @@ st.title("🤖 ArslanTV AI")
 
 # API-Key Sicherung
 if "GOOGLE_API_KEY" in st.secrets:
-    # WICHTIG: Wir erzwingen hier die stabile Version v1
-    genai.configure(api_key=st.secrets["GOOGLE_API_KEY"], transport='rest')
+    # HIER IST DER FIX: Wir erzwingen die stabile API-Version
+    genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 else:
     st.error("Bitte API-Key in den Secrets prüfen!")
     st.stop()
@@ -35,8 +35,8 @@ if prompt := st.chat_input("Wie kann ich Ihnen helfen?"):
         st.markdown(prompt)
 
     try:
-        # Wir nutzen 'gemini-1.5-flash' – das ist das stabilste Modell für Free-Keys
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        # Wir nutzen den VOLLSTÄNDIGEN Pfad, damit v1beta nicht dazwischenfunkt
+        model = genai.GenerativeModel(model_name="models/gemini-1.5-flash")
         response = model.generate_content(prompt)
         
         if response.text:
@@ -45,11 +45,11 @@ if prompt := st.chat_input("Wie kann ich Ihnen helfen?"):
             st.session_state.messages.append({"role": "assistant", "content": response.text})
             
     except Exception as e:
-        # Notfall-Modus: Falls Flash hakt, probieren wir das alte Pro
+        # Sicherheits-Backup: Falls der Pfad oben noch hakt
         try:
-            model = genai.GenerativeModel('gemini-pro')
+            model = genai.GenerativeModel(model_name="gemini-1.5-flash")
             response = model.generate_content(prompt)
             st.chat_message("assistant").markdown(response.text)
             st.session_state.messages.append({"role": "assistant", "content": response.text})
-        except:
-            st.error(f"Technisches Problem: Bitte die Seite einmal neu laden. (Fehler: {e})")
+        except Exception as final_e:
+            st.error(f"Technisches Problem: Bitte kurz warten. (Fehler: {final_e})")
