@@ -130,3 +130,4 @@ if prompt := st.chat_input("Frage ArslanTV AI..."):
                 st.rerun()
             else:
                 st.error("Alle Modelle sind gerade überlastet. Bitte kurz warten.")
+
