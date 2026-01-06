@@ -6,32 +6,25 @@ from gtts import gTTS
 import io
 import base64
 
-# --- 1. SETUP & PERSONALISIERUNG ---
-# Link zu deinem Löwen-Profilbild (Gmail)
-MY_PIC = "https://lh3.googleusercontent.com/a/ACg8ocL8_Q3H4_Y9_Y9_Y9_Y9" # Beispiel-Struktur
+# --- 1. SETUP & LÖWEN-LOGO ---
+# TIPP: Kopiere den Link deines Gmail-Bildes hier hinein:
+MY_PIC = "https://lh3.googleusercontent.com/a/ACg8ocL..." # Dein vollständiger Link
 
-st.set_page_config(page_title="ArslanTV AI", page_icon=MY_PIC, layout="wide")
+st.set_page_config(
+    page_title="ArslanTV AI", 
+    page_icon=MY_PIC, # Das Bild im Browser-Tab
+    layout="wide"
+)
 
+# Design für die runden Bilder
 st.markdown(f"""
     <style>
     .stApp {{ background-color: #0E1117; color: white; }}
-    .stChatMessage {{ border-radius: 15px; border: 1px solid #30363d; background-color: #1A1D23; }}
-    .stSidebar {{ background-color: #161b22; }}
-    
-    .profile-img-small {{ border-radius: 50%; border: 2px solid #e3b341; width: 50px; height: 50px; object-fit: cover; }}
+    .profile-img-small {{ border-radius: 50%; border: 2px solid #e3b341; width: 45px; height: 45px; object-fit: cover; }}
     .profile-img-sidebar {{ border-radius: 50%; border: 3px solid #e3b341; width: 100px; height: 100px; object-fit: cover; display: block; margin: 0 auto 10px auto; }}
-    
-    .title-box {{ display: flex; align-items: center; gap: 15px; }}
-    .gem-card {{ background: linear-gradient(135deg, #1e2227 0%, #0d1117 100%); padding: 15px; border-radius: 12px; border: 2px solid #e3b341; text-align: center; margin-bottom: 20px; }}
+    .title-box {{ display: flex; align-items: center; gap: 15px; margin-bottom: 20px; }}
     </style>
     """, unsafe_allow_html=True)
-
-if "GOOGLE_API_KEY" in st.secrets:
-    genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-else:
-    st.error("API-Key fehlt!")
-    st.stop()
-
 # --- 2. GEMS SYSTEM ---
 if "user_gems" not in st.session_state:
     st.session_state.user_gems = 100 
@@ -58,7 +51,12 @@ with st.sidebar:
         <p style='font-size:0.8em; color:#8b949e;'>Standard: ∞ (Unendlich)</p>
     </div>""", unsafe_allow_html=True)
 
-    model_choice = st.selectbox("Modell wählen:", ["gemini-1.5-flash", "gemini-2.0-flash-exp", "models/nano-banana-pro-preview", "models/gemini-3-pro-preview"])
+   model_choice = st.selectbox("Modell wählen:", [
+    "gemini-1.5-flash", 
+    "gemini-2.0-flash-exp", 
+    "gemini-1.5-pro"
+    "gemini-3.0-pro"
+])
     enable_voice = st.toggle("Live-Audio", value=True)
     
     if st.button("🗑️ Reset Chat & Gems"):
@@ -75,37 +73,21 @@ if "messages" not in st.session_state: st.session_state.messages = []
 for m in st.session_state.messages:
     with st.chat_message(m["role"]): st.markdown(m["content"])
 
-# --- 6. KI-LOGIK (VERBESSERT) ---
+# --- 6. KI-LOGIK (FINALE VERSION) ---
 if prompt := st.chat_input("Frage ArslanTV AI..."):
-    is_pro = any(x in model_choice.lower() for x in ["pro", "banana", "3"])
-    
-    if is_pro and st.session_state.user_gems <= 0:
-        st.warning("⚠️ Gems leer!")
-    else:
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"): st.markdown(prompt)
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"): st.markdown(prompt)
 
-        with st.chat_message("assistant"):
-            res_text = ""
-            queue = [model_choice, "gemini-1.5-flash"]
-            last_err = ""
+    with st.chat_message("assistant"):
+        try:
+            # Hier nutzen wir den sauberen Namen ohne "models/"
+            model = genai.GenerativeModel(model_choice) 
+            response = model.generate_content(prompt)
+            res_text = response.text
             
-            for m_name in queue:
-                try:
-                    model = genai.GenerativeModel(m_name)
-                    response = model.generate_content(prompt)
-                    res_text = response.text
-                    if res_text:
-                        if is_pro and m_name == model_choice: st.session_state.user_gems -= 1
-                        break
-                except Exception as e:
-                    last_err = str(e)
-                    continue
-
-            if res_text:
-                st.markdown(res_text)
-                st.session_state.messages.append({"role": "assistant", "content": res_text})
-                if enable_voice: speak_text(res_text)
-                st.rerun()
-            else:
-                st.error(f"Google-Limit erreicht. Bitte 60 Sek. warten. (Fehler: {last_err})")
+            st.markdown(res_text)
+            st.session_state.messages.append({"role": "assistant", "content": res_text})
+            if enable_voice: speak_text(res_text)
+            st.rerun()
+        except Exception as e:
+            st.error(f"Verbindung zu Google fehlgeschlagen. Fehler: {e}")
