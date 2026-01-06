@@ -1,8 +1,11 @@
 import streamlit as st
 import google.generativeai as genai
+from pypdf import PdfReader
+from PIL import Image
+import io
 
-# 1. Konfiguration & UI Styling
-st.set_page_config(page_title="ArslanTV Ultimate AI", page_icon="🚀", layout="wide")
+# 1. SETUP & DESIGN
+st.set_page_config(page_title="ArslanTV AI", page_icon="🚀", layout="wide")
 
 st.markdown("""
     <style>
@@ -12,86 +15,86 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 2. API-Key Setup
+# API-Key Sicherung
 if "GOOGLE_API_KEY" in st.secrets:
     genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 else:
-    st.error("API-Key fehlt! Bitte in den Streamlit-Secrets 'GOOGLE_API_KEY' hinzufügen.")
+    st.error("API-Key fehlt in den Secrets!")
     st.stop()
 
-# 3. Sidebar: Die "Modell-Garage" (Alle Modelle aus deiner Liste)
+# 2. SIDEBAR - MODELL & DATEI-UPLOAD
 with st.sidebar:
-    st.title("🚀 Modell-Zentrale")
+    st.title("🚀 ArslanTV Zentrale")
     
-    # Gruppierung der Modelle für bessere Übersicht
-    model_category = st.selectbox("Kategorie wählen:", ["Gemini 2.0 (Neu)", "Gemini 1.5 (Standard)", "Experimentell / Spezial"])
-    
-    if model_category == "Gemini 2.0 (Neu)":
-        available_models = [
-            "models/gemini-2.0-flash",
-            "models/gemini-2.0-flash-001",
-            "models/gemini-2.0-flash-exp",
-            "models/gemini-2.0-flash-lite-preview-02-05"
-        ]
-    elif model_category == "Gemini 1.5 (Standard)":
-        available_models = [
-            "models/gemini-1.5-flash",
-            "models/gemini-1.5-pro",
-            "models/gemini-1.5-flash-latest",
-            "models/gemini-pro-latest"
-        ]
-    else: # Experimentell
-        available_models = [
-            "models/deep-research-pro-preview-12-2025",
+    # Modell-Auswahl basierend auf deiner Liste
+    model_choice = st.selectbox(
+        "Wähle dein Modell:",
+        [
+            "models/gemini-2.0-flash", 
+            "models/gemini-3-pro-preview", 
+            "models/gemini-3-flash-preview",
             "models/nano-banana-pro-preview",
-            "models/gemini-exp-1206",
-            "models/gemini-2.0-flash-exp-image-generation"
+            "models/deep-research-pro-preview-12-2025",
+            "models/gemini-1.5-pro"
         ]
-    
-    selected_model = st.selectbox("Präpariertes Modell aktivieren:", available_models)
+    )
     
     st.write("---")
-    if st.button("🗑️ Chat-Verlauf löschen"):
+    st.header("📂 Datei-Upload")
+    uploaded_file = st.file_uploader("PDF oder Bild hochladen", type=["pdf", "png", "jpg", "jpeg"])
+    
+    if st.button("🗑️ Chat löschen"):
         st.session_state.messages = []
         st.rerun()
-    
-    st.info(f"Modell-Pfad: {selected_model}")
 
-# 4. Hauptfenster
-st.title("🤖 ArslanTV Ultimate AI")
-st.markdown(f"Aktive Verbindung: `{selected_model.split('/')[-1]}`")
+# 3. DATEI-VERARBEITUNG LOGIK
+def process_upload(file):
+    if file.type == "application/pdf":
+        reader = PdfReader(file)
+        text = ""
+        for page in reader.pages:
+            text += page.extract_text()
+        return f"\n\n[Inhalt der PDF-Datei]:\n{text}"
+    elif file.type in ["image/png", "image/jpeg", "image/jpg"]:
+        return Image.open(file)
+    return None
 
-# Chat-Verlauf Initialisierung
+# 4. CHAT-INTERFACE (DEINE ÄNDERUNGEN)
+st.title("ArslanTV AI")
+st.caption("Ihr Premium KI-Assistent")
+st.write(f"---")
+
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Nachrichten anzeigen
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# 5. KI Logik & Response
-if prompt := st.chat_input("Was soll ArslanTV AI für dich tun?"):
+# 5. KI-ANFRAGE
+if prompt := st.chat_input("Frage stellen oder Datei beschreiben..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
     try:
-        # Modell laden
-        model = genai.GenerativeModel(selected_model)
+        model = genai.GenerativeModel(model_choice)
+        content_to_send = [prompt]
         
-        with st.spinner(f"Modell {selected_model.split('/')[-1]} arbeitet..."):
-            # Generierung starten
-            response = model.generate_content(prompt)
+        if uploaded_file:
+            processed = process_upload(uploaded_file)
+            if isinstance(processed, str): # PDF Text
+                content_to_send[0] += processed
+            else: # Bild
+                content_to_send.append(processed)
+
+        with st.spinner("ArslanTV AI denkt nach..."):
+            response = model.generate_content(content_to_send)
             
             if response.text:
-                full_response = response.text
                 with st.chat_message("assistant"):
-                    st.markdown(full_response)
-                st.session_state.messages.append({"role": "assistant", "content": full_response})
-            else:
-                st.error("Dieses Modell liefert aktuell keine Daten.")
-                
+                    st.markdown(response.text)
+                st.session_state.messages.append({"role": "assistant", "content": response.text})
+            
     except Exception as e:
-        st.error(f"Fehler: Das Modell '{selected_model}' ist unter diesem Namen aktuell nicht erreichbar oder überlastet.")
-        st.info("Tipp: Wähle in der Sidebar 'models/gemini-2.0-flash', das ist am stabilsten.")
+        st.error(f"Fehler: {e}")
